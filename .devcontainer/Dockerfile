@@ -1,30 +1,23 @@
-FROM mcr.microsoft.com/devcontainers/base:jammy
+FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu
 
-# Basic deps
-RUN apt-get update && apt-get install -y \
-    curl unzip xz-utils zip git wget ca-certificates \
-    libglu1-mesa clang cmake ninja-build pkg-config \
-    openjdk-17-jdk     && apt-get clean
+# Install essentials
+RUN apt-get update && apt-get install -y curl unzip git wget xz-utils openjdk-11-jdk
 
-# --------------------------------------------
-# INSTALL ANDROID SDK (command line tools)
-# --------------------------------------------
-RUN mkdir -p /usr/local/android-sdk \
-    && cd /usr/local/android-sdk \
-    && wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip \
-    && unzip cmdline-tools.zip -d cmdline-tools \
-    && rm cmdline-tools.zip
+# Install Flutter (stable)
+ENV FLUTTER_HOME=/usr/local/flutter
+RUN git clone https://github.com/flutter/flutter.git -b stable $FLUTTER_HOME
+ENV PATH="$FLUTTER_HOME/bin:$PATH"
 
-RUN mkdir -p /usr/local/android-sdk/cmdline-tools/latest \
-    && mv /usr/local/android-sdk/cmdline-tools/* /usr/local/android-sdk/cmdline-tools/latest
+# Android SDK root
+ENV ANDROID_SDK_ROOT=/usr/local/android-sdk
+RUN mkdir -p ${ANDROID_SDK_ROOT}
 
-ENV ANDROID_SDK_ROOT="/usr/local/android-sdk"
-ENV PATH="$PATH:/usr/local/android-sdk/cmdline-tools/latest/bin:/usr/local/android-sdk/platform-tools"
+# Download command line tools
+RUN mkdir -p /tmp/sdk && cd /tmp/sdk && \
+    curl -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
+    unzip cmdline-tools.zip -d ${ANDROID_SDK_ROOT} && rm cmdline-tools.zip
 
-# --------------------------------------------
-# INSTALL FLUTTER
-# --------------------------------------------
-RUN git clone https://github.com/flutter/flutter.git -b stable /usr/local/flutter
-ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
+# Arrange expected layout
+RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && mv ${ANDROID_SDK_ROOT}/tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest || true
 
-# Non-root vscode user setup handled by Codespaces environment.
+ENV PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
