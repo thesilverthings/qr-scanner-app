@@ -1,40 +1,19 @@
 #!/usr/bin/env bash
-set -e
-echo "==============================================="
-echo "   🚀 FIXING ANDROID SDK + FLUTTER IN CODESPACES"
-echo "==============================================="
-
-sudo rm -rf /usr/local/android-sdk
-sudo mkdir -p /usr/local/android-sdk
-sudo chown -R vscode:vscode /usr/local/android-sdk
-
+set -euo pipefail
+export PATH="/usr/local/flutter/bin:$PATH"
 export ANDROID_SDK_ROOT=/usr/local/android-sdk
+export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
-cd /usr/local/android-sdk
-wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-sudo unzip -o tools.zip -d /usr/local/android-sdk/cmdline-tools-temp > /dev/null
-rm tools.zip
+echo "Running flutter doctor and installing android sdk components..."
 
-sudo rm -rf /usr/local/android-sdk/cmdline-tools
-sudo mkdir -p /usr/local/android-sdk/cmdline-tools/latest
-sudo mv /usr/local/android-sdk/cmdline-tools-temp/* /usr/local/android-sdk/cmdline-tools/latest/
-sudo rmdir /usr/local/android-sdk/cmdline-tools-temp
+# Accept licenses and install SDK components
+yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses || true
+sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.2" "emulator" "cmdline-tools;latest" || true
 
-export PATH="$PATH:/usr/local/android-sdk/cmdline-tools/latest/cmdline-tools/bin"
+# Accept android licenses for flutter
+yes | flutter doctor --android-licenses || true
 
-if [ ! -f "/usr/local/android-sdk/cmdline-tools/latest/cmdline-tools/bin/sdkmanager" ]; then
-    echo "❌ sdkmanager missing!"
-    exit 1
-fi
-
-yes | sdkmanager --licenses
-sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
-flutter config --android-sdk /usr/local/android-sdk
-sudo chown -R vscode:vscode /usr/local/flutter
-
+# Run doctor
 flutter doctor -v || true
 
-echo "==============================================="
-echo "🎉 ANDROID SDK + FLUTTER SETUP COMPLETED"
-echo "==============================================="
+echo "Post-create setup complete."
